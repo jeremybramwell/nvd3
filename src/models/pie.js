@@ -394,7 +394,7 @@ nv.models.pie = function() {
                 var i = d3.interpolate(this._current, a);
                 this._current = i(0);
                 return function (t) {
-                    return if(arcs[idx]) arcs[idx](i(t));
+                    if(arcs[idx]) return arcs[idx](i(t));
                 };
             }
         });
