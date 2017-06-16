@@ -1,4 +1,4 @@
-/* nvd3 version 1.8.5-dev (https://github.com/novus/nvd3) 2017-06-14 */
+/* nvd3 version 1.8.5-dev (https://github.com/novus/nvd3) 2017-06-16 */
 (function(){
 
 // set up main nv object
@@ -8467,6 +8467,8 @@ nv.models.multiBarChart = function() {
         , controlWidth = function() { return showControls ? 180 : 0 }
         , duration = 250
         , useInteractiveGuideline = false
+        , showTotalInTooltip = true
+        , totalLabel = 'TOTAL'
         ;
 
     state.stacked = false // DEPRECATED Maintained for backward compatibility
@@ -8818,7 +8820,8 @@ nv.models.multiBarChart = function() {
                 interactiveLayer.dispatch.on('elementMousemove', function(e) {
                     if (e.pointXValue == undefined) return;
 
-                    var singlePoint, pointIndex, pointXLocation, xValue, allData = [];
+                    var singlePoint, pointIndex, pointXLocation, xValue, allData = []
+                        , valueSum = 0;
                     data
                         .filter(function(series, i) {
                             series.seriesIndex = i;
@@ -8826,21 +8829,30 @@ nv.models.multiBarChart = function() {
                         })
                         .forEach(function(series,i) {
                             pointIndex = x.domain().indexOf(e.pointXValue)
-
+                            var tooltipValue
                             var point = series.values[pointIndex];
                             if (point === undefined) return;
 
                             xValue = point.x;
                             if (singlePoint === undefined) singlePoint = point;
                             if (pointXLocation === undefined) pointXLocation = e.mouseX
+                            tooltipValue = chart.y()(point, pointIndex);
+                            valueSum += tooltipValue;
                             allData.push({
                                 key: series.key,
-                                value: chart.y()(point, pointIndex),
+                                value: tooltipValue,
                                 color: color(series,series.seriesIndex),
                                 data: series.values[pointIndex]
                             });
                         });
-
+                        // add a 'Total' row to the tooltip.
+                    if (showTotalInTooltip && allData.length >= 2) {
+                        allData.push({
+                            key: totalLabel
+                            , value: valueSum
+                            , total: true
+                        });
+                    }
                     interactiveLayer.tooltip
                         .data({
                             value: xValue,
@@ -8905,6 +8917,8 @@ nv.models.multiBarChart = function() {
         legendPosition: {get: function(){return legendPosition;}, set: function(_){legendPosition=_;}},
         showControls: {get: function(){return showControls;}, set: function(_){showControls=_;}},
         controlLabels: {get: function(){return controlLabels;}, set: function(_){controlLabels=_;}},
+        showTotalInTooltip: { get: function() { return showTotalInTooltip; }, set: function(_) { showTotalInTooltip = _; } },
+        totalLabel: { get: function() { return totalLabel; }, set: function(_) { totalLabel = _; } },
         showXAxis:      {get: function(){return showXAxis;}, set: function(_){showXAxis=_;}},
         showYAxis:    {get: function(){return showYAxis;}, set: function(_){showYAxis=_;}},
         defaultState:    {get: function(){return defaultState;}, set: function(_){defaultState=_;}},
@@ -14940,22 +14954,20 @@ nv.models.stackedAreaChart = function() {
                     }
                     //Forces the tooltip to use percentage in 'expand' mode.
                     valueFormatter = d3.format(".1%");
-                }
-                else {
+                } else {
                     if (oldValueFormatter) {
                         valueFormatter = oldValueFormatter;
                         oldValueFormatter = null;
                     }
                 }
 
-                interactiveLayer.tooltip
-                    .valueFormatter(valueFormatter)
-                    .data(
-                    {
-                        value: xValue,
-                        series: allData
-                    }
-                )();
+                if (!interactiveLayer.tooltip.headerFormatter()) {
+                    interactiveLayer.tooltip.headerFormatter(valueFormatter)
+                }
+                interactiveLayer.tooltip.data({
+                    value: xValue
+                    , series: allData
+                })();
 
                 interactiveLayer.renderGuideLine(pointXLocation);
 

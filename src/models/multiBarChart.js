@@ -423,7 +423,7 @@ nv.models.multiBarChart = function() {
                             key: totalLabel
                             , value: valueSum
                             , total: true
-                        })
+                        });
                     }
                     interactiveLayer.tooltip
                         .data({
